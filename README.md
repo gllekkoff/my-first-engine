@@ -32,7 +32,7 @@ cmake --build build
 
 - Removed callbacks.h from CMakeLists
 - Moved shaders from cmake-build-debug to project
-
+- It's on hw1 branch, pull-request link: https://github.com/gllekkoff/my-first-engine/pull/2
 #### Basic features
 
 - Step 1: Use Assimp to create a 3D model loader
