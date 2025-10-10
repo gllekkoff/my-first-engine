@@ -113,9 +113,9 @@ int main() {
         20, 21, 23, 23, 22, 20,
     };
 
-    const std::string vertexShaderFile = "shaders/vertexShader.glsl";
-    const std::string fragmentShaderFileA = "shaders/fragmentShaderA.glsl";
-    const std::string fragmentShaderFileB = "shaders/fragmentShaderB.glsl";
+    const std::string vertexShaderFile = "shaders/hw1_cube/vertexShader.glsl";
+    const std::string fragmentShaderFileA = "shaders/hw1_cube/fragmentShaderA.glsl";
+    const std::string fragmentShaderFileB = "shaders/hw1_cube/fragmentShaderB.glsl";
 
     const unsigned int shaderProgramA = createShaderProgram(vertexShaderFile, fragmentShaderFileA);
     const unsigned int shaderProgramB = createShaderProgram(vertexShaderFile, fragmentShaderFileB);
