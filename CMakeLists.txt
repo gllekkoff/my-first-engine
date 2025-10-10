@@ -75,6 +75,10 @@ FetchContent_MakeAvailable(assimp)
 add_executable(${PROJECT_NAME}
     src/main.cpp
     src/shader.cpp
+        include/model.h
+        include/timeClass.h
+        include/performanceLog.h
+        include/performanceLog.h
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -105,3 +109,4 @@ else()
 endif()
 
 file(COPY ${CMAKE_SOURCE_DIR}/shaders DESTINATION ${CMAKE_BINARY_DIR})
+file(COPY ${CMAKE_SOURCE_DIR}/textures DESTINATION ${CMAKE_BINARY_DIR})
