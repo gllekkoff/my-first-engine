@@ -73,7 +73,7 @@ set(ASSIMP_BUILD_GLTF_IMPORTER ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(assimp)
 
 add_executable(${PROJECT_NAME}
-    src/main.cpp
+        src/main.cpp
     src/shader.cpp
         include/model.h
         include/timeClass.h
