@@ -20,17 +20,17 @@ enum DIRECTIONS {
 
 constexpr float PITCH = 0.0f;
 constexpr float YAW = -90.0f;
-constexpr float SPEED = 2.5f;
+constexpr float SPEED = 10.0f;
 constexpr float SENSITIVITY = 0.1f;
 constexpr float ZOOM = 45.0f;
 
 class Camera {
 public:
-    glm::vec3 position;
-    glm::vec3 front;
-    glm::vec3 up;
-    glm::vec3 right;
-    glm::vec3 worldUp;
+    glm::vec3 Pos;
+    glm::vec3 Front;
+    glm::vec3 Up;
+    glm::vec3 Right;
+    glm::vec3 WorldUp;
 
     float pitch;
     float yaw;
@@ -58,20 +58,20 @@ public:
     }
 
     Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = YAW, float pitch = PITCH) :
-    front(glm::vec3(0.0f, 0.0f, -1.0f)), cameraSpeed(SPEED), mouseSensitivity(SENSITIVITY), zoom(ZOOM)
+    Front(glm::vec3(0.0f, 0.0f, -1.0f)), cameraSpeed(SPEED), mouseSensitivity(SENSITIVITY), zoom(ZOOM)
     {
-        this->position = position;
-        worldUp = up;
+        Pos = position;
+        WorldUp = up;
         this->yaw = yaw;
         this->pitch = pitch;
         updateCameraVectors();
     }
 
     Camera(float posX, float posY, float posZ, float upX, float upY, float upZ, float yaw, float pitch) :
-    front(glm::vec3(0.0f, 0.0f, -1.0f)), cameraSpeed(SPEED), mouseSensitivity(SENSITIVITY), zoom(ZOOM)
+    Front(glm::vec3(0.0f, 0.0f, -1.0f)), cameraSpeed(SPEED), mouseSensitivity(SENSITIVITY), zoom(ZOOM)
     {
-        this->position = glm::vec3(posX, posY, posZ);
-        worldUp = glm::vec3(upX, upY, upZ);
+        Pos = glm::vec3(posX, posY, posZ);
+        WorldUp = glm::vec3(upX, upY, upZ);
         this->yaw = yaw;
         this->pitch = pitch;
         updateCameraVectors();
@@ -79,24 +79,24 @@ public:
 
     [[nodiscard]] glm::mat4 GetViewMatrix() const
     {
-        return glm::lookAt(position, position + front, up);
+        return glm::lookAt(Pos, Pos + Front, Up);
     }
 
     void ProcessKeyboard(const DIRECTIONS direction, const float deltaTime)
     {
         const float velocity = cameraSpeed * deltaTime;
         if (direction == FRONT)
-            position += front * velocity;
+            Pos += Front * velocity;
         if (direction == BACK)
-            position -= front * velocity;
+            Pos -= Front * velocity;
         if (direction == LEFT)
-            position -= right * velocity;
+            Pos -= Right * velocity;
         if (direction == RIGHT)
-            position += right * velocity;
+            Pos += Right * velocity;
         if (direction == UP)
-            position += glm::normalize(worldUp) * velocity;
+            Pos += glm::normalize(WorldUp) * velocity;
         if (direction == DOWN)
-            position -= glm::normalize(worldUp) * velocity;
+            Pos -= glm::normalize(WorldUp) * velocity;
     }
 
     void ProcessMouseScroll(const float yoffset)
@@ -115,9 +115,9 @@ private:
         front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
         front.y = sin(glm::radians(pitch));
         front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-        this->front = glm::normalize(front);
-        right = glm::normalize(glm::cross(front, worldUp));
-        up    = glm::normalize(glm::cross(right, front));
+        Front = glm::normalize(front);
+        Right = glm::normalize(glm::cross(front, WorldUp));
+        Up    = glm::normalize(glm::cross(Right, front));
     }
 };
 
