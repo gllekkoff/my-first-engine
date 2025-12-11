@@ -1,0 +1,9 @@
+//
+// Created by gllekk on 12/11/25.
+//
+
+#ifndef MY_FIRST_ENGINE_GENERATEBAYERTEXTURE_H
+#define MY_FIRST_ENGINE_GENERATEBAYERTEXTURE_H
+
+unsigned int generateBayerTexture();
+#endif //MY_FIRST_ENGINE_GENERATEBAYERTEXTURE_H
