@@ -72,41 +72,32 @@ set(ASSIMP_BUILD_FBX_IMPORTER ON CACHE BOOL "" FORCE)
 set(ASSIMP_BUILD_GLTF_IMPORTER ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(assimp)
 
-add_executable(${PROJECT_NAME}
-    src/main.cpp
-    src/shader.cpp
-        include/model.h
-        include/timeClass.h
-        include/performanceLog.h
-        include/performanceLog.h
+message(STATUS "Fetching imgui...")
+FetchContent_Declare(
+        imgui
+        GIT_REPOSITORY https://github.com/ocornut/imgui.git
+        GIT_TAG v1.90.1
+)
+FetchContent_MakeAvailable(imgui)
+
+file(GLOB IMGUI_SOURCES
+        ${imgui_SOURCE_DIR}/*.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
-target_include_directories(${PROJECT_NAME} PUBLIC
-    ${CMAKE_SOURCE_DIR}/include
-    ${stb_SOURCE_DIR}
-    ${khr_SOURCE_DIR}/api
+add_library(ImGui STATIC ${IMGUI_SOURCES})
+
+target_include_directories(ImGui PUBLIC
+        ${imgui_SOURCE_DIR}
+        ${imgui_SOURCE_DIR}/backends
 )
 
-target_link_libraries(${PROJECT_NAME} PUBLIC
-    OpenGL::GL
-    glfw
-    glm::glm
-    assimp
-    glad
-)
+target_link_libraries(ImGui PUBLIC glfw)
 
-get_filename_component(PROJECT_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}" ABSOLUTE)
-target_compile_definitions(
-        ${PROJECT_NAME}
-        PRIVATE
-        PROJECT_ROOT="${PROJECT_SOURCE_DIR}"
-)
+add_subdirectory(hw1)
+add_subdirectory(hw2)
+add_subdirectory(hw3)
+add_subdirectory(hw4)
+#add_subdirectory(hw5)
 
-if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE /W4)
-else()
-    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
-endif()
-
-file(COPY ${CMAKE_SOURCE_DIR}/shaders DESTINATION ${CMAKE_BINARY_DIR})
-file(COPY ${CMAKE_SOURCE_DIR}/textures DESTINATION ${CMAKE_BINARY_DIR})
