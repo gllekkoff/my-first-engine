@@ -5,34 +5,29 @@ float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
 bool rotateMouseActive = false;
+int currentWidth = SCR_WIDTH;
+int currentHeight = SCR_HEIGHT;
 
-int main()
-{
+int main() {
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-#ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
-
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "OpenGL HW4", NULL, NULL);
-    if (window == NULL)
-    {
+    if (!window) {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
         return -1;
     }
-    glfwMakeContextCurrent(window);
 
+    glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
 
-    if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress)))
-    {
+    if (!gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress))) {
         std::cout << "Failed to initialize GLAD" << std::endl;
         return -1;
     }
@@ -41,66 +36,72 @@ int main()
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
 
     TimeManager timeManager;
+    Scene scene;
+    RenderSettings renderSettings;
+    DitheringEffect dithering;
 
     std::vector<Vertex> planeVertices = {
-        { glm::vec3( 250.0f, -5.0f,  250.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(25.0f,  0.0f) },
-        { glm::vec3(-250.0f, -5.0f,  250.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2( 0.0f,  0.0f) },
+        { glm::vec3( 250.0f, -5.0f,  250.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(25.0f, 0.0f) },
+        { glm::vec3(-250.0f, -5.0f,  250.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2( 0.0f, 0.0f) },
         { glm::vec3(-250.0f, -5.0f, -250.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2( 0.0f, 25.0f) },
         { glm::vec3( 250.0f, -5.0f, -250.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec2(25.0f, 25.0f) }
     };
-    std::vector<unsigned int> planeIndices = {
-        0, 1, 2,
-        0, 2, 3
-    };
-    const Mesh planeMesh(planeVertices, planeIndices, {});
-    const unsigned int groundTexture = TextureFromFile("planeGrass.jpg", "textures/plane");
+    std::vector<unsigned int> planeIndices = { 0, 1, 2, 0, 2, 3 };
+    Mesh planeMesh(planeVertices, planeIndices, {});
+    unsigned int groundTexture = TextureFromFile("planeGrass.jpg", "textures/plane");
+    scene.setFloor(planeMesh, groundTexture);
 
-    const unsigned int bayerTexture = generateBayerTexture();
+    // Model headModel1("textures/head/head.OBJ");
+    // headModel1.position = glm::vec3(-7.5f, -1.0f, 0.0f);
+    // scene.addModel(&headModel1, false);
+    //
+    // Model headModel2("textures/head/head.OBJ");
+    // headModel2.position = glm::vec3(7.5f, -1.0f, 0.0f);
+    // scene.addModel(&headModel2, true);
 
-    Model headModel1("textures/head/head.OBJ");
-    headModel1.isTransparent = false;
-    headModel1.position = glm::vec3(-1.5f, -1.0f, 0.0f);
+    Model sphere1("textures/sphere_uv/sphere.obj");
+    sphere1.position = glm::vec3(-7.5f, 2.0f, 0.0f);
+    scene.addModel(&sphere1, false);
 
-    Model headModel2("textures/head/head.OBJ");
-    headModel2.isTransparent = true;
-    headModel2.position = glm::vec3(1.5f, -1.0f, 0.0f);
+    Model sphere2("textures/sphere_uv/sphere.obj");
+    sphere2.position = glm::vec3(7.5f, 2.0f, 0.0f);
+    scene.addModel(&sphere2, false);
 
-    std::vector opaqueModels = { &headModel1 };
-    std::vector transparentModels = { &headModel2 };
+    Shader mainShader("shaders/lightning/lightningVertex.glsl",
+                      "shaders/lightning/lightningFragment.glsl");
+    Shader lamp("shaders/lamp/lampVertex.glsl",
+                "shaders/lamp/lampFragment.glsl");
+    Shader depthShader("shaders/depthShadow/shadowDepth_vertex.glsl",
+                       "shaders/depthShadow/shadowDepth_frag.glsl");
 
-    Shader mainShader("shaders/lightning/lightningVertex.glsl", "shaders/lightning/lightningFragment.glsl");
-    Shader lamp("shaders/lamp/lampVertex.glsl", "shaders/lamp/lampFragment.glsl");
-    Shader depthShader("shaders/depthShadow/shadowDepth_vertex.glsl", "shaders/depthShadow/shadowDepth_frag.glsl");
 
     Model lightGlyph("textures/sphere_uv/sphere.obj");
+    LightingSystem lighting;
+    lighting.initShadowMap();
 
-    LightingSystem myLight;
-    myLight.initShadowMap();
+    lighting.dir.direction = glm::vec3(-0.5f, -1.0f, -0.5f);
+    lighting.dir.color = glm::vec3(1.0f, 1.0f, 1.0f);
+    lighting.dir.intensity = 1.0f;
+    lighting.dir.enabled = true;
 
-    myLight.dir.direction = glm::vec3(-0.25f,-1.0f,-0.2f);
-    myLight.dir.color     = glm::vec3(1.0f,0.97f,0.92f);
-    myLight.dir.intensity = 0.5f;
+    lighting.shadowOrthoSize = 200.0f;
 
-    myLight.points[0].position   = glm::vec3(-2.0f, 0.0f, 0.0f);
-    myLight.points[0].color      = glm::vec3(1.0f, 0.25f, 0.25f);
-    myLight.points[0].intensity  = 1.0f;
-    myLight.points[1].position   = glm::vec3(2.0f, 0.0f, 0.0f);
-    myLight.points[1].color      = glm::vec3(0.25f, 0.8f, 1.0f);
-    myLight.points[1].intensity  = 1.0f;
-    myLight.spot.intensity = 0.6f;
+    lighting.spot.enabled = false;
 
-    float shadowBias = 0.005f;
-    bool usePCF = false;
+    lighting.points[0].position = glm::vec3(-20.0f, 10.0f, 0.0f);
+    lighting.points[0].color = glm::vec3(1.0f, 0.25f, 0.25f);
+    lighting.points[0].intensity = 20.0f;
+    lighting.points[1].position = glm::vec3(20.0f, 10.0f, 0.0f);
+    lighting.points[1].color = glm::vec3(0.25f, 0.8f, 1.0f);
+    lighting.points[1].intensity = 20.0f;
+    lighting.points[0].enabled = true;
+    lighting.points[1].enabled = true;
 
-    bool enableDithering = true;
-    float ditherStrength = 1.0f;
-    int ditherLevels = 8;
 
     while (!glfwWindowShouldClose(window)) {
         timeManager.beginFrame();
@@ -111,101 +112,52 @@ int main()
         ImGui::NewFrame();
 
         ImGui::Begin("Rendering Settings");
-
-        if (ImGui::CollapsingHeader("Shadow Settings")) {
-            ImGui::SliderFloat("Shadow Bias", &shadowBias, 0.001f, 0.05f);
-            ImGui::Checkbox("Use PCF", &usePCF);
-        }
-
-        if (ImGui::CollapsingHeader("Dithering Settings")) {
-            ImGui::Checkbox("Enable Dithering", &enableDithering);
-            ImGui::SliderFloat("Dither Strength", &ditherStrength, 0.0f, 2.0f);
-            ImGui::SliderInt("Color Levels", &ditherLevels, 2, 32);
-        }
-
+        renderSettings.renderImGui();
+        dithering.renderImGui();
+        lighting.renderImGui();
         ImGui::End();
 
-        auto renderSceneGeometry = [&](Shader& shader) {
-            renderFloor(shader, planeMesh);
-            for (auto* model : opaqueModels) {
-                glm::mat4 M = glm::translate(glm::mat4(1.0f), model->position);
-                M = glm::scale(M, glm::vec3(5.0f));
-                shader.setMat4("model", M);
-                model->Draw(shader);
-            }
-            for (auto* model : transparentModels) {
-                glm::mat4 M = glm::translate(glm::mat4(1.0f), model->position);
-                M = glm::scale(M, glm::vec3(5.0f));
-                shader.setMat4("model", M);
-                model->Draw(shader);
-            }
-        };
-
-        myLight.renderShadowMap(depthShader, renderSceneGeometry);
+        lighting.renderShadowMap(depthShader, [&](Shader& shader) {
+            scene.renderAll(shader);
+        });
 
         glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        lighting.spot.position  = camera.Pos;
+        lighting.spot.direction = camera.Front;
+
         mainShader.use();
 
-        glActiveTexture(GL_TEXTURE6);
-        glBindTexture(GL_TEXTURE_2D, bayerTexture);
-        mainShader.setInt("bayerTexture", 6);
-        mainShader.setBool("enableDithering", enableDithering);
-        mainShader.setFloat("ditherStrength", ditherStrength);
-        mainShader.setInt("ditherLevels", ditherLevels);
+        mainShader.setVec3("material.diffuse", glm::vec3(0.8f, 0.2f, 0.2f));
+        mainShader.setVec3("material.specular", glm::vec3(1.0f, 1.0f, 1.0f));
+        mainShader.setFloat("material.shininess", 64.0f);
+        mainShader.setBool("useModelTexture", false);
 
-        glm::mat4 projection = glm::perspective(glm::radians(camera.zoom),
-                                                static_cast<float>(SCR_WIDTH) / static_cast<float>(SCR_HEIGHT),
-                                                0.1f, 1000.0f);
+        glm::mat4 projection = glm::perspective(
+            glm::radians(camera.zoom),
+            static_cast<float>(currentWidth) / static_cast<float>(currentHeight),
+            0.1f, 1000.0f
+        );
         glm::mat4 view = camera.GetViewMatrix();
         mainShader.setMat4("projection", projection);
         mainShader.setMat4("view", view);
 
-        myLight.bindShadowMap(mainShader, 5);
-        myLight.apply(mainShader, camera.Pos);
+        lighting.bindShadowMap(mainShader, 5);
+        lighting.apply(mainShader, camera.Pos);
+        mainShader.setFloat("shadowBias", renderSettings.shadowBias);
+        mainShader.setBool("usePCF", renderSettings.usePCF);
 
-        mainShader.setFloat("shadowBias", shadowBias);
-        mainShader.setBool("usePCF", usePCF);
+        dithering.bind(mainShader, 6);
+        dithering.applySettings(mainShader);
 
-        glDepthMask(GL_TRUE);
-        glDisable(GL_BLEND);
-
-        setupFloorMaterial(mainShader, groundTexture);
-        renderFloor(mainShader, planeMesh);
-
-        setupModelMaterial(mainShader);
-        mainShader.setFloat("materialAlpha", 1.0f);
-        for (auto* model : opaqueModels) {
-            glm::mat4 M = glm::translate(glm::mat4(1.0f), model->position);
-            M = glm::scale(M, glm::vec3(5.0f));
-            mainShader.setMat4("model", M);
-            model->Draw(mainShader);
-        }
-
-        std::sort(transparentModels.begin(), transparentModels.end(),
-            [&](const Model* a, const Model* b) {
-                return a->getDistanceToCamera(camera.Pos) > b->getDistanceToCamera(camera.Pos);
-            });
-
-        glDepthMask(GL_FALSE);
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-        mainShader.setFloat("materialAlpha", 0.5f);
-        for (auto* model : transparentModels) {
-            glm::mat4 M = glm::translate(glm::mat4(1.0f), model->position);
-            M = glm::scale(M, glm::vec3(5.0f));
-            mainShader.setMat4("model", M);
-            model->Draw(mainShader);
-        }
-
-        glDepthMask(GL_TRUE);
-        glDisable(GL_BLEND);
+        scene.renderFloor(mainShader);
+        scene.renderOpaque(mainShader);
+        scene.renderTransparent(mainShader, camera.Pos);
 
         lamp.use();
         lamp.setFloat("emissiveIntensity", 1.0f);
-        myLight.drawMarkers(lamp, lightGlyph, projection, view);
+        lighting.drawMarkers(lamp, lightGlyph, projection, view);
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -221,16 +173,14 @@ int main()
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-
     glfwTerminate();
+
     return 0;
 }
 
-void processInput(GLFWwindow *window, const float deltaTime)
-{
+void processInput(GLFWwindow *window, const float deltaTime) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
-
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         camera.ProcessKeyboard(FRONT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -245,17 +195,13 @@ void processInput(GLFWwindow *window, const float deltaTime)
         camera.ProcessKeyboard(DOWN, deltaTime);
 }
 
-void mouse_callback(GLFWwindow* window, const double xposIn, const double yposIn)
-{
-    if (!rotateMouseActive) {
-        return;
-    }
+void mouse_callback(GLFWwindow* window, const double xposIn, const double yposIn) {
+    if (!rotateMouseActive) return;
 
     const float xpos = static_cast<float>(xposIn);
     const float ypos = static_cast<float>(yposIn);
 
-    if (firstMouse)
-    {
+    if (firstMouse) {
         lastX = xpos;
         lastY = ypos;
         firstMouse = false;
@@ -263,65 +209,22 @@ void mouse_callback(GLFWwindow* window, const double xposIn, const double yposIn
 
     const float xoffset = xpos - lastX;
     const float yoffset = lastY - ypos;
-
     lastX = xpos;
     lastY = ypos;
 
     camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
-void mouse_button_callback(GLFWwindow* window, const int button, const int action, int mode)
-{
-    if (button == GLFW_MOUSE_BUTTON_RIGHT)
-    {
-        if (action == GLFW_PRESS)
-        {
+void mouse_button_callback(GLFWwindow* window, const int button, const int action, int mode) {
+    if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+        if (action == GLFW_PRESS) {
             rotateMouseActive = true;
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
             firstMouse = true;
         }
-        else if (action == GLFW_RELEASE)
-        {
+        else if (action == GLFW_RELEASE) {
             rotateMouseActive = false;
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }
     }
-}
-
-void setupFloorMaterial(Shader& shader, const unsigned int groundTexture) {
-    shader.setBool("useFloorTiling", true);
-    shader.setBool("useModelTexture", false);
-    shader.setFloat("floorTileScale", 10.0f);
-    shader.setVec3("material.diffuse", glm::vec3(1.0f));
-    shader.setVec3("material.specular", glm::vec3(0.2f));
-    shader.setFloat("material.shininess", 16.0f);
-    shader.setInt("floorTexture", 0);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, groundTexture);
-}
-
-void setupModelMaterial(Shader& shader) {
-    shader.setBool("useFloorTiling", false);
-    shader.setBool("useModelTexture", true);
-    shader.setVec3("material.specular", glm::vec3(0.35f));
-    shader.setFloat("material.shininess", 32.0f);
-}
-
-void renderFloor(Shader& shader, const Mesh& planeMesh) {
-    glm::mat4 M(1.0f);
-    M = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
-    shader.setMat4("model", M);
-    planeMesh.Draw(shader);
-}
-
-void renderModels(Shader& shader, const Model& myModel) {
-    glm::mat4 M = glm::translate(glm::mat4(1.0f), glm::vec3(-1.5f, -2.0f, 0.0f));
-    M = glm::scale(M, glm::vec3(5.0f));
-    shader.setMat4("model", M);
-    myModel.Draw(shader);
-
-    M = glm::translate(glm::mat4(1.0f), glm::vec3(1.5f, -2.0f, 0.0f));
-    M = glm::scale(M, glm::vec3(5.0f));
-    shader.setMat4("model", M);
-    myModel.Draw(shader);
 }

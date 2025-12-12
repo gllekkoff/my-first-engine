@@ -43,14 +43,22 @@ void LightingSystem::initShadowMap() {
 glm::mat4 LightingSystem::getLightSpaceMatrix() const {
     constexpr float near_plane = 0.1f;
     constexpr float far_plane = 300.0f;
-    constexpr float orthoSize = 250.0f;
-    const glm::mat4 lightProjection = glm::ortho(-orthoSize, orthoSize, -orthoSize, orthoSize,
-                                           near_plane, far_plane);
-    const glm::vec3 lightPos = -glm::normalize(dir.direction) * 100.0f;
-    const glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+    const glm::mat4 lightProjection = glm::ortho(-shadowOrthoSize, shadowOrthoSize,
+                                                   -shadowOrthoSize, shadowOrthoSize,
+                                                   near_plane, far_plane);
+
+    const glm::vec3 sceneCenter = glm::vec3(0.0f, 2.0f, 0.0f);
+
+    glm::vec3 lightDir = glm::length(dir.direction) > 0.001f
+                         ? glm::normalize(dir.direction)
+                         : glm::vec3(0.0f, -1.0f, 0.0f);
+
+    const glm::vec3 lightPos = sceneCenter - lightDir * 150.0f;
+    const glm::mat4 lightView = glm::lookAt(lightPos, sceneCenter, glm::vec3(0.0f, 1.0f, 0.0f));
+
     return lightProjection * lightView;
 }
-
 
 void LightingSystem::renderShadowMap(Shader& depthShader, const std::function<void(Shader&)>& renderScene) {
     glm::mat4 lightSpaceMatrix = getLightSpaceMatrix();
@@ -61,15 +69,10 @@ void LightingSystem::renderShadowMap(Shader& depthShader, const std::function<vo
     glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
     glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
     glClear(GL_DEPTH_BUFFER_BIT);
-
-    glCullFace(GL_FRONT);
-
     depthShader.use();
     depthShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
 
     renderScene(depthShader);
-
-    glCullFace(GL_BACK);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
 }
@@ -84,30 +87,27 @@ void LightingSystem::bindShadowMap(Shader& shader, int textureUnit) {
 
 void LightingSystem::apply(Shader& lightingShader, const glm::vec3& viewPos) const {
     lightingShader.use();
-    lightingShader.setVec3("material_diffuse", material.diffuse);
-    lightingShader.setVec3("material_specular", material.specular);
-    lightingShader.setFloat("material_shininess", material.shininess);
     lightingShader.setVec3("viewPos", viewPos);
 
     lightingShader.setVec3("dirLight.direction", dir.direction);
     lightingShader.setVec3("dirLight.color", dir.color);
-    lightingShader.setFloat("dirLight.intensity", dir.intensity);
+    lightingShader.setFloat("dirLight.intensity", dir.enabled ? dir.intensity : 0.0f);
 
-    for (int i=0; i<2; ++i) {
+    for (int i = 0; i < 2; ++i) {
         std::string base = "pointLights[" + std::to_string(i) + "].";
         const PointLight& L = points[i];
-        lightingShader.setVec3(base+"position", L.position);
-        lightingShader.setVec3(base+"color", L.color);
-        lightingShader.setFloat(base+"intensity", L.intensity);
-        lightingShader.setFloat(base+"constant", L.constant);
-        lightingShader.setFloat(base+"linear", L.linear);
-        lightingShader.setFloat(base+"quadratic", L.quadratic);
+        lightingShader.setVec3(base + "position", L.position);
+        lightingShader.setVec3(base + "color", L.color);
+        lightingShader.setFloat(base + "intensity", L.enabled ? L.intensity : 0.0f);
+        lightingShader.setFloat(base + "constant", L.constant);
+        lightingShader.setFloat(base + "linear", L.linear);
+        lightingShader.setFloat(base + "quadratic", L.quadratic);
     }
 
     lightingShader.setVec3("spotLight.position", spot.position);
     lightingShader.setVec3("spotLight.direction", spot.direction);
     lightingShader.setVec3("spotLight.color", spot.color);
-    lightingShader.setFloat("spotLight.intensity", spot.intensity);
+    lightingShader.setFloat("spotLight.intensity", spot.enabled ? spot.intensity : 0.0f);
     lightingShader.setFloat("spotLight.cutOff", spot.cutOff);
     lightingShader.setFloat("spotLight.outerCutOff", spot.outerCutOff);
     lightingShader.setFloat("spotLight.constant", spot.constant);
@@ -141,3 +141,51 @@ void LightingSystem::drawMarkers(Shader& lampShader, const Model& glyph,
     glyph.Draw(lampShader);
 }
 
+void LightingSystem::renderImGui() {
+    if (ImGui::CollapsingHeader("Directional Light")) {
+        ImGui::Checkbox("Enable##dir", &dir.enabled);
+        ImGui::SliderFloat3("Direction", &dir.direction.x, -1.0f, 1.0f);
+        if (glm::length(dir.direction) > 0.001f) {
+            dir.direction = glm::normalize(dir.direction);
+        }
+        ImGui::ColorEdit3("Color##dir", &dir.color.x);
+        ImGui::SliderFloat("Intensity##dir", &dir.intensity, 0.0f, 2.0f);
+    }
+
+    if (ImGui::CollapsingHeader("Point Lights")) {
+        for (int i = 0; i < 2; i++) {
+            ImGui::PushID(i);
+            std::string label = "Light " + std::to_string(i);
+            if (ImGui::TreeNode(label.c_str())) {
+                ImGui::Checkbox("Enable", &points[i].enabled);
+                ImGui::SliderFloat3("Position", &points[i].position.x, -10.0f, 10.0f);
+                ImGui::ColorEdit3("Color", &points[i].color.x);
+                ImGui::SliderFloat("Intensity", &points[i].intensity, 0.0f, 10.0f);
+
+                float range = points[i].getRange();
+                if (ImGui::SliderFloat("Range", &range, 5.0f, 200.0f)) {
+                    points[i].setRange(range);
+                }
+                ImGui::TreePop();
+            }
+            ImGui::PopID();
+        }
+    }
+
+    if (ImGui::CollapsingHeader("Spot Light")) {
+        ImGui::Checkbox("Enable##spot", &spot.enabled);
+        ImGui::ColorEdit3("Color##spot", &spot.color.x);
+        ImGui::SliderFloat("Intensity##spot", &spot.intensity, 0.0f, 20.0f);
+
+        float innerAngle = glm::degrees(glm::acos(spot.cutOff));
+        if (ImGui::SliderFloat("Cone Angle", &innerAngle, 5.0f, 45.0f)) {
+            spot.cutOff = glm::cos(glm::radians(innerAngle));
+            spot.outerCutOff = glm::cos(glm::radians(innerAngle + 5.0f));
+        }
+
+        float range = spot.getRange();
+        if (ImGui::SliderFloat("Range##spot", &range, 5.0f, 200.0f)) {
+            spot.setRange(range);
+        }
+    }
+}

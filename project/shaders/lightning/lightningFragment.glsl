@@ -117,25 +117,30 @@ vec3 blinnPhong(vec3 Ldir, vec3 Vdir, vec3 N, vec3 Lrgb, float Li) {
     vec3 kd = getDiffuseColor();
     vec3 ks = getSpecularColor();
     float NdotL = max(dot(N, Ldir), 0.0);
+
     vec3 ambient = 0.03 * kd * Lrgb;
     vec3 diffuse = NdotL * kd * Lrgb;
     vec3 H = normalize(Ldir + Vdir);
     float NdotH = max(dot(N, H), 0.0);
     vec3 spec = pow(NdotH, max(material.shininess, 1.0)) * ks * Lrgb;
+
     return Li * (ambient + diffuse + spec);
 }
 
 vec3 CalcDirLight(DirLight L, vec3 N, vec3 V) {
-    return blinnPhong(normalize(-L.direction), V, N, L.color, L.intensity);
+    vec3 Ldir = normalize(-L.direction);
+    return blinnPhong(Ldir, V, N, L.color, L.intensity);
 }
 
 vec3 CalcPointLight(PointLight L, vec3 N, vec3 V, vec3 P) {
     vec3 toL = L.position - P;
     float d = length(toL);
-    vec3 Ldir= toL / max(d, 1e-6);
+    vec3 Ldir = toL / max(d, 1e-6);
     float att = 1.0 / (L.constant + L.linear*d + L.quadratic*d*d);
+
     return att * blinnPhong(Ldir, V, N, L.color, L.intensity);
 }
+
 
 vec3 CalcSpotLight(SpotLight L, vec3 N, vec3 V, vec3 P) {
     vec3 toL = L.position - P;
@@ -165,8 +170,9 @@ void main() {
     vec3 V = normalize(viewPos - fs.FragPos);
     vec3 color = vec3(0.0);
 
-    float shadow = ShadowCalculation(fs.FragPosLightSpace, N, -dirLight.direction);
+    float shadow = ShadowCalculation(fs.FragPosLightSpace, N, normalize(-dirLight.direction));
     color += CalcDirLight(dirLight, N, V) * (1.0 - shadow);
+
     color += CalcPointLight(pointLights[0], N, V, fs.FragPos);
     color += CalcPointLight(pointLights[1], N, V, fs.FragPos);
     color += CalcSpotLight(spotLight, N, V, fs.FragPos);

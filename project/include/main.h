@@ -23,6 +23,10 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include "generateBayerTexture.h"
+#include "dithering.h"
+#include "scene.h"
+#include "renderSettings.h"
+
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -31,7 +35,13 @@ constexpr unsigned int SCR_HEIGHT = 720;
 
 constexpr unsigned int amount = 10000;
 
-inline void framebuffer_size_callback(GLFWwindow* window, const int width, const int height){glViewport(0, 0, width, height);}
+inline void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+    glViewport(0, 0, width, height);
+    extern int currentWidth, currentHeight;
+    currentWidth = width;
+    currentHeight = height;
+}
+
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
 inline void scroll_callback(GLFWwindow* window, double xoffset, double yoffset){};
@@ -43,5 +53,6 @@ void renderModels(Shader& shader, const Model& myModel);
 void renderFloor(Shader& shader, const Mesh& planeMesh);
 void setupModelMaterial(Shader& shader);
 void setupFloorMaterial(Shader& shader, unsigned int groundTexture);
+
 
 #endif //MY_FIRST_ENGINE_MAIN_H

@@ -8,6 +8,9 @@ add_executable(${TARGET}
         src/camera.cpp
         src/timeManager.cpp
         src/generateBayerTexture.cpp
+        src/dithering.cpp
+        src/scene.cpp
+        src/renderSettings.cpp
 )
 
 target_include_directories(${TARGET} PUBLIC

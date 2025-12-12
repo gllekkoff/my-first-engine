@@ -41,11 +41,11 @@ cmake --build build
 - Step 4: Huge plaform a.k.a floor
 - Step 5: Performance tests (10k cubes, also made additionally 100k cubes to see the real difference)
 
-<img src="hw4/images/1k_comparison.png" alt="Comparison for 1000 cubes" width="800">
+<img src="hw2/dataPlots/1k_comparison.png" alt="Comparison for 1000 cubes" width="800">
 
-<img src="hw4/images/10k_comparison.png" alt="Comparison for 10000 cubes" width="800">
+<img src="hw2/dataPlots/10k_comparison.png" alt="Comparison for 10000 cubes" width="800">
 
-<img src="hw4/images/100k_comparison.png" alt="Comparison for 100000 cubes" width="800">
+<img src="hw2/dataPlots/100k_comparison.png" alt="Comparison for 100000 cubes" width="800">
 
 p.s: i have 120hz monitor on laptop\
 
