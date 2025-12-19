@@ -102,12 +102,24 @@ Step 4: Transparency
 ## HW5
 
 #### Fixes
-### HW2:
+**HW2:**
 - Code in headers
-### HW3:
+
+**HW3:**
 - Fixed HW2 compilation error
 - Code in headers
 
 #### Basic features
 
+- Step 1: Implement HDR tonemapping
+- Step 2: Implement physically based rendering
+- Step 3: Normal mapping
+- Step 4: Clean code ( i hope )
+
 #### Additional Features
+
+- Added DirLight, Spotlight, PointsLight settings in ImGui ( hope for additional points, i want 100 for the course :=) )
+- Added a menu to imgui to pick the HDR tonemapping algorithm and add 2 more algorithms to pick from, +0.5 pts to each additional one above that. (7 in total)
+- Added FXAA (2 pts.), also added it to ImGui
+
+#### TYSM for course, pls 100
