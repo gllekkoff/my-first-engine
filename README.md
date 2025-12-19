@@ -122,4 +122,7 @@ Step 4: Transparency
 - Added a menu to imgui to pick the HDR tonemapping algorithm and add 2 more algorithms to pick from, +0.5 pts to each additional one above that. (7 in total)
 - Added FXAA (2 pts.), also added it to ImGui
 
+HW1 Additional:
+- Additional Task 3 (1.5 pts) Add a transformation matrix separate fro the camera transform, so that the cube would move in a linear motion / be rotated separate from the camera. Essentially make your cube spin/move back and forth in real time.
+
 #### TYSM for course, pls 100

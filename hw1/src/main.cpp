@@ -155,7 +155,14 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glm::mat4 view = camera.GetViewMatrix();
-        auto model = glm::mat4(1.0f);
+        float angle = currentFrame * 50.0f;
+        float xPos = sin(currentFrame) * 2.0f;
+        float yPos = cos(currentFrame * 0.5f) * 1.0f;
+
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(xPos, yPos, 0.0f));
+        model = glm::rotate(model, glm::radians(angle), glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::scale(model, glm::vec3(1.0f));
         glm::mat4 proj  = glm::perspective(glm::radians(camera.zoom),
                                           static_cast<float>(SCREEN_WIDTH)/static_cast<float>(SCREEN_HEIGHT),
                                           0.1f, 100.0f);
